@@ -32,6 +32,16 @@ struct Vertex {
     DirectX::XMFLOAT2 uv;
 };
 
+// Helper Function for error Checking
+void CheckHR(HRESULT hr, const char* message) {
+    if (FAILED(hr)) {
+        OutputDebugStringA(message);
+        OutputDebugStringA("\n");
+    }
+}
+
+
+
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 bool InitWindow(HINSTANCE hInstance, int nCmdShow);
@@ -139,10 +149,8 @@ bool InitD3D11() {
     return SUCCEEDED(hr);
 }
 
-//-----------------------------------------------------------------------------
-// Low-resolution render target setup (unchanged)
-//-----------------------------------------------------------------------------
 bool CreateLowResResources() {
+    // Create low-res texture (854x480)
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.Width = 854;
     texDesc.Height = 480;
@@ -153,135 +161,153 @@ bool CreateLowResResources() {
     texDesc.Usage = D3D11_USAGE_DEFAULT;
     texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 
-    if (FAILED(g_pDevice->CreateTexture2D(&texDesc, nullptr, &g_pLowResRT)))
-        return false;
+    HRESULT hr = g_pDevice->CreateTexture2D(&texDesc, nullptr, &g_pLowResRT);
+    CheckHR(hr, "Failed to create low-res texture");
 
-    g_pDevice->CreateRenderTargetView(g_pLowResRT, nullptr, &g_pLowResRTV);
-    g_pDevice->CreateShaderResourceView(g_pLowResRT, nullptr, &g_pLowResSRV);
+    hr = g_pDevice->CreateRenderTargetView(g_pLowResRT, nullptr, &g_pLowResRTV);
+    CheckHR(hr, "Failed to create RTV");
 
-    return true;
+    hr = g_pDevice->CreateShaderResourceView(g_pLowResRT, nullptr, &g_pLowResSRV);
+    CheckHR(hr, "Failed to create SRV");
+
+    return SUCCEEDED(hr);
 }
 
-//-----------------------------------------------------------------------------
-// Full-screen quad setup (unchanged)
-//-----------------------------------------------------------------------------
 bool CreateFullscreenQuad() {
+    // Define full-screen quad vertices
     Vertex vertices[] = {
-        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f} },
-        {  {1.0f,  1.0f, 0.0f}, {1.0f, 0.0f} },
-        { {-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f} },
-        {  {1.0f, -1.0f, 0.0f}, {1.0f, 1.0f} }
+        { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f} }, // Top-left
+        { { 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f} }, // Top-right
+        { {-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f} }, // Bottom-left
+        { { 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f} }  // Bottom-right
     };
 
+    // Create vertex buffer
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(vertices);
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
 
     D3D11_SUBRESOURCE_DATA initData = { vertices };
-    if (FAILED(g_pDevice->CreateBuffer(&bd, &initData, &g_pQuadVB)))
-        return false;
+    HRESULT hr = g_pDevice->CreateBuffer(&bd, &initData, &g_pQuadVB);
+    CheckHR(hr, "Failed to create vertex buffer");
 
+    // Compile shaders with error reporting
     ID3DBlob* vsBlob = nullptr;
-    if (FAILED(D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "VS_main", "vs_5_0", 0, 0, &vsBlob, nullptr)))
+    ID3DBlob* errorBlob = nullptr;
+
+    hr = D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr,
+        "VS_main", "vs_5_0", 0, 0, &vsBlob, &errorBlob);
+    if (FAILED(hr)) {
+        if (errorBlob) {
+            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            errorBlob->Release();
+        }
         return false;
+    }
 
-    g_pDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_pVS);
+    hr = g_pDevice->CreateVertexShader(vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize(), nullptr, &g_pVS);
+    CheckHR(hr, "Failed to create vertex shader");
 
+    // Create input layout
     D3D11_INPUT_ELEMENT_DESC layout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
     };
-    g_pDevice->CreateInputLayout(layout, 2, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &g_pInputLayout);
+
+    hr = g_pDevice->CreateInputLayout(layout, 2, vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize(), &g_pInputLayout);
+    CheckHR(hr, "Failed to create input layout");
     vsBlob->Release();
 
+    // Compile pixel shader
     ID3DBlob* psBlob = nullptr;
-    if (FAILED(D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "PS_main", "ps_5_0", 0, 0, &psBlob, nullptr)))
+    hr = D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr,
+        "PS_main", "ps_5_0", 0, 0, &psBlob, &errorBlob);
+    if (FAILED(hr)) {
+        if (errorBlob) {
+            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            errorBlob->Release();
+        }
         return false;
+    }
 
-    g_pDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &g_pPS);
+    hr = g_pDevice->CreatePixelShader(psBlob->GetBufferPointer(),
+        psBlob->GetBufferSize(), nullptr, &g_pPS);
+    CheckHR(hr, "Failed to create pixel shader");
     psBlob->Release();
 
+    // Create sampler state
     D3D11_SAMPLER_DESC sampDesc = {};
     sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
     sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
     sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    sampDesc.MinLOD = 0;
-    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
-    if (FAILED(g_pDevice->CreateSamplerState(&sampDesc, &g_pSamplerState)))
-        return false;
+    hr = g_pDevice->CreateSamplerState(&sampDesc, &g_pSamplerState);
+    CheckHR(hr, "Failed to create sampler state");
 
     return true;
 }
 
-//-----------------------------------------------------------------------------
-// New: Render scene to low-res render target (480p)
-//-----------------------------------------------------------------------------
 void RenderSceneToLowResRT() {
-    // Clear to gradient (demo purposes)
-    float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    // Clear to a visible color (green)
+    float clearColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
     g_pContext->ClearRenderTargetView(g_pLowResRTV, clearColor);
     g_pContext->OMSetRenderTargets(1, &g_pLowResRTV, nullptr);
 
-    // [Your actual game rendering would go here]
-    // For demo: Just clear with a color gradient
+    // In a real application, you would render your scene here
+    // For debugging, we'll just clear with a solid color
 }
 
-//-----------------------------------------------------------------------------
-// New: Upscale from 480p to 720p
-//-----------------------------------------------------------------------------
 void UpscaleToBackbuffer() {
-    // Get backbuffer
+    // Get back buffer
     ID3D11Texture2D* pBackBuffer = nullptr;
-    HRESULT hr =g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&pBackBuffer);
-
-    if (FAILED(hr))
-    {
-        OutputDebugString(L"Failed to get back buffer!\n");
+    HRESULT hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&pBackBuffer);
+    if (FAILED(hr)) {
+        OutputDebugStringA("Failed to get back buffer\n");
         return;
     }
 
+    // Create render target view
     ID3D11RenderTargetView* pBackbufferRTV = nullptr;
     hr = g_pDevice->CreateRenderTargetView(pBackBuffer, nullptr, &pBackbufferRTV);
     pBackBuffer->Release();
 
-    if (FAILED(hr))
-    {
-        OutputDebugString(L"CreateRenderTargetView failed! \n");
+    if (FAILED(hr)) {
+        OutputDebugStringA("Failed to create RTV for back buffer\n");
         return;
     }
 
-    // Clear backbuffer
+    // Clear to magenta so we know if rendering fails
     float clearColor[4] = { 1.0f, 0.0f, 1.0f, 1.0f };
     g_pContext->ClearRenderTargetView(pBackbufferRTV, clearColor);
     g_pContext->OMSetRenderTargets(1, &pBackbufferRTV, nullptr);
 
-    //Verify shader resources
-    if (!g_pVS || !g_pPS || !g_pLowResSRV) {
-        OutputDebugString(L"Missing shader resources!\n");
-        pBackbufferRTV->Release();
-        return;
-    }
+    // Set viewport
+    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
+    g_pContext->RSSetViewports(1, &vp);
 
-
-    // Set upscaling shaders and resources
+    // Set shaders and resources
     g_pContext->VSSetShader(g_pVS, nullptr, 0);
     g_pContext->PSSetShader(g_pPS, nullptr, 0);
     g_pContext->PSSetShaderResources(0, 1, &g_pLowResSRV);
     g_pContext->PSSetSamplers(0, 1, &g_pSamplerState);
     g_pContext->IASetInputLayout(g_pInputLayout);
 
-    // Draw full-screen quad
+    // Set vertex buffer
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
     g_pContext->IASetVertexBuffers(0, 1, &g_pQuadVB, &stride, &offset);
     g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+    // Draw the quad
     g_pContext->Draw(4, 0);
 
+    // Present
+    g_pSwapChain->Present(1, 0);
     pBackbufferRTV->Release();
 }
 

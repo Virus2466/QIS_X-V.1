@@ -25,5 +25,5 @@ SamplerState samplerState : register(s0);
 
 float4 PS_main(PS_IN input) : SV_TARGET
 {
-    return sourceTex.Sample(samplerState, input.uv);
+    return float4(1.0, 0.0, 0.0, 1.0);
 }
