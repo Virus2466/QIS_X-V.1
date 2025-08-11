@@ -1,8 +1,9 @@
 # QIS-X ( Quality Intelligent Scalling - eXtended )
 
 ## Goal
-QIS_X-V.1 aims to deliver **high-quality upscaling for low-end systems** by providing an **efficient, lightweight image enhancement solution**.  
-The project focuses on **maximizing visual clarity without overloading hardware**, making modern visuals accessible to older or resource-constrained devices.
+QIS_X-V.1 is designed to bring **high-quality game upscaling to low-end systems.  
+Its purpose is to enhance in-game visuals with efficient, lightweight upscaling techniques, enabling sharper graphics and smoother gameplay without overwhelming limited hardware.  
+The project focuses on making modern visual quality accessible even on older gaming setups.
 
 ## Features
 - 🚀 Lightweight Processing – Optimized for low memory and CPU/GPU usage  
