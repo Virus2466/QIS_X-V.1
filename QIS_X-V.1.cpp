@@ -16,9 +16,7 @@
     Notes:
     ------
     This is a minimal demonstration intended as a foundation for more advanced
-    spatial/temporal upscaling techniques (e.g., FSR, DLSS).
-    Replace the RenderSceneToLowResRT() implementation with actual rendering
-    logic to integrate into a game or visualization pipeline.
+    spatial/temporal upscaling techniques (e.g., FSR, DLSS)
 */
 
 

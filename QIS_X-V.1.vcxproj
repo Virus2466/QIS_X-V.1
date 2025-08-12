@@ -132,10 +132,12 @@
     <ClInclude Include="QIS_X-V.1.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FrameSync.cpp" />
     <ClCompile Include="QIS_X-V.1.cpp" />
+    <ClCompile Include="Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="QIS_X-V.1.rc" />
