@@ -1,28 +1,28 @@
 #pragma once
 #include <Windows.h>
+#include<dxgi.h>
+#include<dxgi1_4.h>
 
 class FrameSync {
 private:
+    IDXGISwapChain* m_pSwapChain;
 	LARGE_INTEGER m_frequency;
-	LARGE_INTEGER m_lastTime;
+	LARGE_INTEGER m_lastFrameTime;
 	float m_deltaTime;
-	float m_fps;
-	int m_frameCount;
-	float m_timeElapsed;
+	float m_smoothedDeltaTime;
+	HANDLE m_frameLatencyWait;
 
 public:
-	FrameSync();
+    FrameSync(IDXGISwapChain* m_pSwapChain);
+    ~FrameSync();
 
-	// Call at the end of each frame
-	void Sync(int targetFPS = 60);
-	
-	// Get time between frames in seconds 
-	float GetDeltaTime() const { return m_deltaTime; }
+    void BeginFrame();
+    void EndFrame(int targetFPS = 0);
 
-	// Get Calculated FPS
-	float GetFPS() const { return m_fps; }
+    float GetDeltaTime() const { return m_deltaTime; }
+    float GetSmoothedDeltaTime() const { return m_smoothedDeltaTime; }
 
-	// Reset timing stats
-	void Reset();
+private:
+    void WaitForGPU();
 
 };

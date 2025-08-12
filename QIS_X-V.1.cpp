@@ -1,8 +1,36 @@
+/*
+    Project: QIS-X Upscaler Demo
+    Author : Dev Patel
+    Date   : August 12, 2025
+    Version: 1.0
+
+    Description:
+    ------------
+    This application demonstrates a basic real-time upscaling pipeline using
+    Direct3D 11. The rendering flow is as follows:
+        1. Render the scene to a low-resolution render target (480p).
+        2. Use a full-screen textured quad to upscale the low-res image to
+           the back buffer (720p) via a pixel shader.
+        3. Present the upscaled frame to the screen with frame synchronization.
+
+    Notes:
+    ------
+    This is a minimal demonstration intended as a foundation for more advanced
+    spatial/temporal upscaling techniques (e.g., FSR, DLSS).
+    Replace the RenderSceneToLowResRT() implementation with actual rendering
+    logic to integrate into a game or visualization pipeline.
+*/
+
+
+
+
 #include "QIS_X-V.1.h"
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include<dxgi1_4.h>
+
 #include <cstdio>
 
 #include "FrameSync.h"
@@ -16,7 +44,7 @@ HWND g_hWnd = nullptr;
 ID3D11Device* g_pDevice = nullptr;
 ID3D11DeviceContext* g_pContext = nullptr;
 IDXGISwapChain* g_pSwapChain = nullptr;
-FrameSync g_frameSync;
+FrameSync* g_frameSync = nullptr;
 
 // Upscaling Resources
 ID3D11Texture2D* g_pLowResRT = nullptr;          // 480p render target
@@ -46,6 +74,7 @@ void CheckHR(HRESULT hr, const char* message) {
 
 
 
+
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 bool InitWindow(HINSTANCE hInstance, int nCmdShow);
@@ -69,6 +98,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     if (!CreateLowResResources()) return 1;
     if (!CreateFullscreenQuad()) return 1;
 
+
+    FrameSync frameSync(g_pSwapChain);
+    float fpsUpdateTimer = 0.0f;
+
     MSG msg = {};
     while (msg.message != WM_QUIT) {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -76,8 +109,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
             DispatchMessage(&msg);
         }
         else {
-
-            g_frameSync.Sync(60);
+            
+            frameSync.BeginFrame();
 
             // Clear both render targets
             float clearColor[4] = { 0.0f , 0.0f , 0.0f , 1.0f };
@@ -94,14 +127,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
             // 3. Present
             g_pSwapChain->Present(1, 0);
 
-            static float fpsUpdateTimer = 0.0f;
-            fpsUpdateTimer += g_frameSync.GetDeltaTime();
-            if (fpsUpdateTimer >= 0.25f) { // Every 1/4 second
-                wchar_t title[256];
-                swprintf_s(title, L"QIS-X Upscaler - %.1f FPS", g_frameSync.GetFPS());
-                SetWindowText(g_hWnd, title);
-                fpsUpdateTimer = 0.0f;
-            }
+            // Frame pacing
+            frameSync.EndFrame(60);
+
+            //static float fpsUpdateTimer = 0.0f;
+            //fpsUpdateTimer += frameSync.GetDeltaTime();
+            //if (fpsUpdateTimer >= 0.25f) { // Every 1/4 second
+            //    wchar_t title[256];
+            //    swprintf_s(title, L"QIS-X Upscaler - %.1f FPS", frameSync.GetFPS());
+            //    SetWindowText(g_hWnd, title);
+            //    fpsUpdateTimer = 0.0f;
+            //}
         }
     }
 
@@ -149,7 +185,7 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow) {
 //-----------------------------------------------------------------------------
 bool InitD3D11() {
     DXGI_SWAP_CHAIN_DESC scd = {};
-    scd.BufferCount = 2;
+    scd.BufferCount = 3;
     scd.BufferDesc.Width = 1280;
     scd.BufferDesc.Height = 720;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -159,8 +195,8 @@ bool InitD3D11() {
     scd.OutputWindow = g_hWnd;
     scd.SampleDesc.Count = 1;
     scd.Windowed = TRUE;
-    scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    scd.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
     D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
@@ -170,7 +206,26 @@ bool InitD3D11() {
         &scd, &g_pSwapChain, &g_pDevice,
         nullptr, &g_pContext);
 
+
     return SUCCEEDED(hr);
+
+    if (g_pSwapChain) {
+        g_frameSync = new FrameSync(g_pSwapChain);
+    }
+    else {
+        OutputDebugString(L"Failed to create Swap Chain - frame sync unavailable\n");
+    }
+
+
+    // Set Maximum frame latency
+    IDXGISwapChain2* pSwapChain2 = nullptr;
+    if (SUCCEEDED(pSwapChain2->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&pSwapChain2))); {
+        pSwapChain2->SetMaximumFrameLatency(1);
+        pSwapChain2->Release();
+    }
+
+
+    return true;
 }
 
 bool CreateLowResResources() {
