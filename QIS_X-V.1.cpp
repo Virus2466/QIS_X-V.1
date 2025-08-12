@@ -1,5 +1,5 @@
 /*
-    Project: QIS-X Upscaler Demo
+    Project: QIS-X Upscaler Demo [ Phase - 1 ]
     Author : Dev Patel
     Date   : August 12, 2025
     Version: 1.0
