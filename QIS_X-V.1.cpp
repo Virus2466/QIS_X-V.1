@@ -3,6 +3,9 @@
 #include <dxgi1_2.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <cstdio>
+
+#include "FrameSync.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -13,6 +16,7 @@ HWND g_hWnd = nullptr;
 ID3D11Device* g_pDevice = nullptr;
 ID3D11DeviceContext* g_pContext = nullptr;
 IDXGISwapChain* g_pSwapChain = nullptr;
+FrameSync g_frameSync;
 
 // Upscaling Resources
 ID3D11Texture2D* g_pLowResRT = nullptr;          // 480p render target
@@ -72,6 +76,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
             DispatchMessage(&msg);
         }
         else {
+
+            g_frameSync.Sync(60);
+
+            // Clear both render targets
+            float clearColor[4] = { 0.0f , 0.0f , 0.0f , 1.0f };
+            g_pContext->ClearRenderTargetView(g_pLowResRTV, clearColor);
+
+             
+
             // 1. Render scene to low-res render target (480p)
             RenderSceneToLowResRT();
 
@@ -80,6 +93,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 
             // 3. Present
             g_pSwapChain->Present(1, 0);
+
+            static float fpsUpdateTimer = 0.0f;
+            fpsUpdateTimer += g_frameSync.GetDeltaTime();
+            if (fpsUpdateTimer >= 0.25f) { // Every 1/4 second
+                wchar_t title[256];
+                swprintf_s(title, L"QIS-X Upscaler - %.1f FPS", g_frameSync.GetFPS());
+                SetWindowText(g_hWnd, title);
+                fpsUpdateTimer = 0.0f;
+            }
         }
     }
 
@@ -131,12 +153,14 @@ bool InitD3D11() {
     scd.BufferDesc.Width = 1280;
     scd.BufferDesc.Height = 720;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    scd.BufferDesc.RefreshRate = { 60, 1 };
+    scd.BufferDesc.RefreshRate.Numerator = 60;
+    scd.BufferDesc.RefreshRate.Denominator = 1;
     scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     scd.OutputWindow = g_hWnd;
     scd.SampleDesc.Count = 1;
     scd.Windowed = TRUE;
     scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
     D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
