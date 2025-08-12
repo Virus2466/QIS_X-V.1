@@ -48,8 +48,8 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow);
 bool InitD3D11();
 bool CreateLowResResources();
 bool CreateFullscreenQuad();
-void RenderSceneToLowResRT();  // New function for scene rendering
-void UpscaleToBackbuffer();    // New function for upscaling pass
+void RenderSceneToLowResRT();  
+void UpscaleToBackbuffer();    
 void Cleanup();
 
 //-----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 }
 
 //-----------------------------------------------------------------------------
-// Window setup (unchanged)
+// Window setup 
 //-----------------------------------------------------------------------------
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -110,7 +110,7 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow) {
 
     RECT rc = { 0, 0, 1280, 720 };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
-    g_hWnd = CreateWindow(wc.lpszClassName, L"QIS+ Upscaler Demo",
+    g_hWnd = CreateWindow(wc.lpszClassName, L"QIS-X Upscaler Demo",
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
         rc.right - rc.left, rc.bottom - rc.top,
         nullptr, nullptr, hInstance, nullptr);
@@ -123,7 +123,7 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow) {
 }
 
 //-----------------------------------------------------------------------------
-// Direct3D 11 initialization (unchanged)
+// Direct3D 11 initialization 
 //-----------------------------------------------------------------------------
 bool InitD3D11() {
     DXGI_SWAP_CHAIN_DESC scd = {};
@@ -171,6 +171,13 @@ bool CreateLowResResources() {
     CheckHR(hr, "Failed to create SRV");
 
     return SUCCEEDED(hr);
+    if (g_pLowResRT == nullptr) {  
+        OutputDebugStringA("Error: g_pLowResRT is null before calling CreateShaderResourceView\n");  
+        return false;  
+    }  
+
+    hr = g_pDevice->CreateShaderResourceView(g_pLowResRT, nullptr, &g_pLowResSRV);  
+    CheckHR(hr, "Failed to create SRV");
 }
 
 bool CreateFullscreenQuad() {
@@ -258,8 +265,7 @@ void RenderSceneToLowResRT() {
     g_pContext->ClearRenderTargetView(g_pLowResRTV, clearColor);
     g_pContext->OMSetRenderTargets(1, &g_pLowResRTV, nullptr);
 
-    // In a real application, you would render your scene here
-    // For debugging, we'll just clear with a solid color
+    // Render Scene Here in Fututre Main logic here .....
 }
 
 void UpscaleToBackbuffer() {
