@@ -133,11 +133,13 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="WICTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FrameSync.cpp" />
     <ClCompile Include="QIS_X-V.1.cpp" />
     <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="WICTextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="QIS_X-V.1.rc" />
