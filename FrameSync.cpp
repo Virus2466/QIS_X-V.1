@@ -1,6 +1,12 @@
 #include "FrameSync.h"
+#include<cstdio>
 
-FrameSync::FrameSync(IDXGISwapChain* pSwapChain) : m_pSwapChain(pSwapChain) {
+FrameSync::FrameSync(IDXGISwapChain* pSwapChain) 
+    : m_pSwapChain(pSwapChain),
+      m_frameCount(0),
+      m_timeElapsed(0.0f),
+      m_currentFPS(0.0f)
+{
     QueryPerformanceFrequency(&m_frequency);
     QueryPerformanceCounter(&m_lastFrameTime);
     m_deltaTime = 0.016f; // Start with 60Hz assumption
@@ -35,6 +41,24 @@ void FrameSync::BeginFrame() {
     // Apply exponential smoothing to delta time
     const float alpha = 0.2f;
     m_smoothedDeltaTime = alpha * m_deltaTime + (1.0f - alpha) * m_smoothedDeltaTime;
+
+
+    // FPS Calculation.
+    m_frameCount++;
+    m_timeElapsed += m_deltaTime;
+
+    if (m_timeElapsed >= 1.0f) {
+        m_currentFPS = m_frameCount / m_timeElapsed;
+        m_frameCount = 0;
+        m_timeElapsed = 0.0f;
+
+        // Debug output
+        char buffer[64];
+        sprintf_s(buffer, "FPS: %.1f\n", m_currentFPS);
+        OutputDebugStringA(buffer);
+    }
+
+
 }
 
 void FrameSync::EndFrame(int targetFPS) {

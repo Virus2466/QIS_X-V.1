@@ -116,28 +116,28 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
             float clearColor[4] = { 0.0f , 0.0f , 0.0f , 1.0f };
             g_pContext->ClearRenderTargetView(g_pLowResRTV, clearColor);
 
-             
-
+  
             // 1. Render scene to low-res render target (480p)
             RenderSceneToLowResRT();
-
             // 2. Upscale to backbuffer (720p)
             UpscaleToBackbuffer();
 
+            static float fpsUpdateTimer = 0.0f;
+            fpsUpdateTimer += frameSync.GetDeltaTime();
+            if (fpsUpdateTimer >= 0.25f) {
+                wchar_t title[256];
+                swprintf_s(title, L"QIS-X Upscaler - %.1f FPS (Frame Time: %.2fms)",
+                    frameSync.GetFPS(),
+                    frameSync.GetDeltaTime() * 1000.0f);
+                SetWindowText(g_hWnd, title);
+                fpsUpdateTimer = 0.0f;
+            }
+
             // 3. Present
             g_pSwapChain->Present(1, 0);
-
-            // Frame pacing
             frameSync.EndFrame(60);
 
-            //static float fpsUpdateTimer = 0.0f;
-            //fpsUpdateTimer += frameSync.GetDeltaTime();
-            //if (fpsUpdateTimer >= 0.25f) { // Every 1/4 second
-            //    wchar_t title[256];
-            //    swprintf_s(title, L"QIS-X Upscaler - %.1f FPS", frameSync.GetFPS());
-            //    SetWindowText(g_hWnd, title);
-            //    fpsUpdateTimer = 0.0f;
-            //}
+
         }
     }
 
