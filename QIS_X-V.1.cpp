@@ -32,10 +32,12 @@
 #include <cstdio>
 
 #include "FrameSync.h"
+#include "Texture.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib,"windowscodecs.lib")
 
 // Global handles
 HWND g_hWnd = nullptr;
@@ -43,6 +45,7 @@ ID3D11Device* g_pDevice = nullptr;
 ID3D11DeviceContext* g_pContext = nullptr;
 IDXGISwapChain* g_pSwapChain = nullptr;
 FrameSync* g_frameSync = nullptr;
+ID3D11ShaderResourceView* g_pDemoTexture = nullptr;
 
 // Upscaling Resources
 ID3D11Texture2D* g_pLowResRT = nullptr;          // 480p render target
@@ -95,6 +98,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     if (!InitD3D11()) return 1;
     if (!CreateLowResResources()) return 1;
     if (!CreateFullscreenQuad()) return 1;
+
+
+    // Load resources After D3D is ready
+    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"test_image.png");
+    if (!g_pDemoTexture) {
+        MessageBox(nullptr, L"Failed to Load Texture!", L"Error", MB_OK);
+    }
 
 
     FrameSync frameSync(g_pSwapChain);
@@ -343,6 +353,20 @@ void RenderSceneToLowResRT() {
     g_pContext->OMSetRenderTargets(1, &g_pLowResRTV, nullptr);
 
     // Render Scene Here in Fututre Main logic here .....
+    // Simple Full screen Quad Drawing with Texture
+    if (g_pDemoTexture) {
+        g_pContext->PSSetShaderResources(0, 1, &g_pDemoTexture);
+        // Set simple shaders (already created)
+        g_pContext->VSSetShader(g_pVS, nullptr, 0);
+        g_pContext->PSSetShader(g_pPS, nullptr, 0);
+
+        // Draw quad
+        UINT stride = sizeof(Vertex);
+        UINT offset = 0;
+        g_pContext->IASetVertexBuffers(0, 1, &g_pQuadVB, &stride, &offset);
+        g_pContext->Draw(4, 0);
+    }
+
 }
 
 void UpscaleToBackbuffer() {
@@ -409,4 +433,5 @@ void Cleanup() {
     if (g_pSwapChain) g_pSwapChain->Release();
     if (g_pContext) g_pContext->Release();
     if (g_pDevice) g_pDevice->Release();
+    ReleaseTexture(g_pDemoTexture);
 }
