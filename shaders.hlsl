@@ -25,6 +25,10 @@ SamplerState samplerState : register(s0);
 
 float4 PS_main(PS_IN input) : SV_TARGET
 {
+    
+    
+    
+    
    float4 color = sourceTex.Sample(samplerState, input.uv);
     
    // Add border to verify upscaling

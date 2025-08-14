@@ -1,4 +1,4 @@
-/*
+﻿/*
     Project: QIS-X Upscaler Demo [ Phase - 1 ]
     Author : Dev Patel
     Date   : August 12, 2025
@@ -21,15 +21,18 @@
 */
 
 
-#include "QIS_X-V.1.h"
+
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include<dxgi1_4.h>
 
+#include<format>
+#include<iostream>
 #include <cstdio>
 
+#include "QIS_X-V.1.h"
 #include "FrameSync.h"
 #include "Texture.h"
 
@@ -45,6 +48,9 @@ ID3D11DeviceContext* g_pContext = nullptr;
 IDXGISwapChain* g_pSwapChain = nullptr;
 FrameSync* g_frameSync = nullptr;
 ID3D11ShaderResourceView* g_pDemoTexture = nullptr;
+UINT g_textureWidth = 0;
+UINT g_textureHeight = 0;
+
 
 // Upscaling Resources
 ID3D11Texture2D* g_pLowResRT = nullptr;          // 480p render target
@@ -103,10 +109,36 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 
     // Load resources After D3D is ready
     ReleaseTexture(g_pDemoTexture);
-    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"test_img.png" , true);
+    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"tester_img.png" , true);
     if (!g_pDemoTexture) {
         MessageBox(nullptr, L"Failed to Load Texture!", L"Error", MB_OK);
     }
+
+
+
+    if (g_pDemoTexture) {
+
+        // Get Texture Dimensions
+        ID3D11Resource* textureResource;
+        g_pDemoTexture->GetResource(&textureResource);
+
+        ID3D11Texture2D* texture2D;
+        textureResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&texture2D);
+
+        D3D11_TEXTURE2D_DESC desc;
+        texture2D->GetDesc(&desc);
+        g_textureWidth = desc.Width;
+        g_textureHeight = desc.Height;
+
+        texture2D->Release();
+        textureResource->Release();
+    
+
+        // Log Dimensions
+        OutputDebugString(std::format(L"Texture size :  {}x{} \n", g_textureWidth, g_textureHeight).c_str());
+    }
+
+
 
 
     FrameSync frameSync(g_pSwapChain);
@@ -196,8 +228,8 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow) {
 bool InitD3D11() {
     DXGI_SWAP_CHAIN_DESC scd = {};
     scd.BufferCount = 3;
-    scd.BufferDesc.Width = 1920;
-    scd.BufferDesc.Height = 1080;
+    scd.BufferDesc.Width = 1280;
+    scd.BufferDesc.Height = 720;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     scd.BufferDesc.RefreshRate.Numerator = 60;
     scd.BufferDesc.RefreshRate.Denominator = 1;
@@ -271,8 +303,6 @@ bool CreateLowResResources() {
 
 bool CreateFullscreenQuad() {
 
-
-    // Define full-screen quad vertices
     Vertex vertices[] = {
         { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f} }, // Top-left
         { { 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f} }, // Top-right
@@ -289,6 +319,9 @@ bool CreateFullscreenQuad() {
     D3D11_SUBRESOURCE_DATA initData = { vertices };
     HRESULT hr = g_pDevice->CreateBuffer(&bd, &initData, &g_pQuadVB);
     CheckHR(hr, "Failed to create vertex buffer");
+
+     OutputDebugString(std::format(L"UV Top-Left: ({}, {})\n", vertices[0].uv.x, vertices[0].uv.y).c_str());
+    OutputDebugString(std::format(L"UV Bottom-Right: ({}, {})\n", vertices[3].uv.x, vertices[3].uv.y).c_str());
 
     // Compile shaders with error reporting
     ID3DBlob* vsBlob = nullptr;
@@ -351,16 +384,24 @@ bool CreateFullscreenQuad() {
 }
 
 void RenderSceneToLowResRT() {
+
+    // Set viewport to match low-res render target (854x480)
+    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 854.0f, 480.0f, 0.0f, 1.0f };
+    g_pContext->RSSetViewports(1, &vp);
+
     // Clear to a visible color (green)
     float clearColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
     g_pContext->ClearRenderTargetView(g_pLowResRTV, clearColor);
     g_pContext->OMSetRenderTargets(1, &g_pLowResRTV, nullptr);
 
+
+    // Set input layout and primitive topology
+    g_pContext->IASetInputLayout(g_pInputLayout);
+    g_pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
     // Render Scene Here in Fututre Main logic here .....
-    // Simple Full screen Quad Drawing with Texture
     if (g_pDemoTexture) {
         g_pContext->PSSetShaderResources(0, 1, &g_pDemoTexture);
-        // Set simple shaders (already created)
         g_pContext->VSSetShader(g_pVS, nullptr, 0);
         g_pContext->PSSetShader(g_pPS, nullptr, 0);
 
@@ -398,7 +439,7 @@ void UpscaleToBackbuffer() {
     g_pContext->OMSetRenderTargets(1, &pBackbufferRTV, nullptr);
 
     // Set viewport
-    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f };
+    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
     g_pContext->RSSetViewports(1, &vp);
 
     // Set shaders and resources
@@ -423,7 +464,7 @@ void UpscaleToBackbuffer() {
 }
 
 //-----------------------------------------------------------------------------
-// Cleanup (unchanged)
+// Cleanup 
 //-----------------------------------------------------------------------------
 void Cleanup() {
     if (g_pDemoTexture) {
