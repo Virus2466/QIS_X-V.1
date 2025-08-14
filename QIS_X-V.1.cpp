@@ -17,9 +17,8 @@
     ------
     This is a minimal demonstration intended as a foundation for more advanced
     spatial/temporal upscaling techniques (e.g., FSR, DLSS)
+
 */
-
-
 
 
 #include "QIS_X-V.1.h"
@@ -98,10 +97,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     if (!InitD3D11()) return 1;
     if (!CreateLowResResources()) return 1;
     if (!CreateFullscreenQuad()) return 1;
+   
+
 
 
     // Load resources After D3D is ready
-    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"test_image.png");
+    ReleaseTexture(g_pDemoTexture);
+    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"test_img.png" , true);
     if (!g_pDemoTexture) {
         MessageBox(nullptr, L"Failed to Load Texture!", L"Error", MB_OK);
     }
@@ -194,8 +196,8 @@ bool InitWindow(HINSTANCE hInstance, int nCmdShow) {
 bool InitD3D11() {
     DXGI_SWAP_CHAIN_DESC scd = {};
     scd.BufferCount = 3;
-    scd.BufferDesc.Width = 1280;
-    scd.BufferDesc.Height = 720;
+    scd.BufferDesc.Width = 1920;
+    scd.BufferDesc.Height = 1080;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     scd.BufferDesc.RefreshRate.Numerator = 60;
     scd.BufferDesc.RefreshRate.Denominator = 1;
@@ -268,6 +270,8 @@ bool CreateLowResResources() {
 }
 
 bool CreateFullscreenQuad() {
+
+
     // Define full-screen quad vertices
     Vertex vertices[] = {
         { {-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f} }, // Top-left
@@ -394,7 +398,7 @@ void UpscaleToBackbuffer() {
     g_pContext->OMSetRenderTargets(1, &pBackbufferRTV, nullptr);
 
     // Set viewport
-    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
+    D3D11_VIEWPORT vp = { 0.0f, 0.0f, 1920.0f, 1080.0f, 0.0f, 1.0f };
     g_pContext->RSSetViewports(1, &vp);
 
     // Set shaders and resources
@@ -422,6 +426,10 @@ void UpscaleToBackbuffer() {
 // Cleanup (unchanged)
 //-----------------------------------------------------------------------------
 void Cleanup() {
+    if (g_pDemoTexture) {
+        g_pDemoTexture->Release();
+        g_pDemoTexture = nullptr; // Prevent dangling pointers
+    }
     if (g_pSamplerState) g_pSamplerState->Release();
     if (g_pInputLayout) g_pInputLayout->Release();
     if (g_pPS) g_pPS->Release();
@@ -433,5 +441,5 @@ void Cleanup() {
     if (g_pSwapChain) g_pSwapChain->Release();
     if (g_pContext) g_pContext->Release();
     if (g_pDevice) g_pDevice->Release();
-    ReleaseTexture(g_pDemoTexture);
+   
 }
