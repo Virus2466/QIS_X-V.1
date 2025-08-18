@@ -50,6 +50,7 @@ FrameSync* g_frameSync = nullptr;
 ID3D11ShaderResourceView* g_pDemoTexture = nullptr;
 UINT g_textureWidth = 0;
 UINT g_textureHeight = 0;
+bool g_SplitScreen = true;
 
 
 // Upscaling Resources
@@ -69,6 +70,12 @@ struct Vertex {
     DirectX::XMFLOAT3 pos;
     DirectX::XMFLOAT2 uv;
 };
+
+
+struct CB {
+    float screenSize;
+};
+
 
 // Helper Function for error Checking
 void CheckHR(HRESULT hr, const char* message) {
@@ -109,7 +116,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 
     // Load resources After D3D is ready
     ReleaseTexture(g_pDemoTexture);
-    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"tester_img.png" , true);
+    g_pDemoTexture = LoadTextureFromFile(g_pDevice, L"grid.jpeg" , true);
     if (!g_pDemoTexture) {
         MessageBox(nullptr, L"Failed to Load Texture!", L"Error", MB_OK);
     }
@@ -163,6 +170,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
             RenderSceneToLowResRT();
             // 2. Upscale to backbuffer (720p)
             UpscaleToBackbuffer();
+
+
 
             static float fpsUpdateTimer = 0.0f;
             fpsUpdateTimer += frameSync.GetDeltaTime();
@@ -382,6 +391,7 @@ bool CreateFullscreenQuad() {
 
     return true;
 }
+
 
 void RenderSceneToLowResRT() {
 
