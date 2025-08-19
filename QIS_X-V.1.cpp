@@ -193,7 +193,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     }
 
     Cleanup();
+    MessageBoxA(nullptr, "Press OK to exit...", "Debug Pause", MB_OK);
     return 0;
+
 }
 
 //-----------------------------------------------------------------------------

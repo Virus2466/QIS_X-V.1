@@ -1,7 +1,5 @@
-
 Texture2D sourceTex : register(t0);
 SamplerState samplerState : register(s0);
-
 
 struct VS_IN
 {
@@ -11,10 +9,9 @@ struct VS_IN
 
 struct PS_IN
 {
-    float4 pos : SV_POSITION; 
+    float4 pos : SV_POSITION;
     float2 uv : TEXCOORD0;
 };
-
 
 PS_IN VS_main(VS_IN input)
 {
@@ -64,14 +61,45 @@ float4 BicubicSample(Texture2D tex, float2 uv, float2 texSize)
     return sampled / max(totalWeight, 1e-5);
 }
 
-// Pixel shader with bicubic
+// Pixel shader with bicubic and sharpening
 float4 PS_main(PS_IN input) : SV_TARGET
 {
     float2 texSize;
- 
     sourceTex.GetDimensions(texSize.x, texSize.y);
     
+    // Perform bicubic sampling
     float4 color = BicubicSample(sourceTex, input.uv, texSize);
+    
+    // Sharpening parameters (tunable)
+    static const float sharpenStrength = 1.5; // Adjust for intensity (e.g., 0.5 to 2.0)
+    static const float2 texelSize = float2(1.0 / 854.0, 1.0 / 480.0); // Based on low-res render target
+    
+    // Sample the 3x3 neighborhood for sharpening
+    float2 offsets[9] =
+    {
+        float2(-texelSize.x, -texelSize.y), // Top-left
+        float2(0.0, -texelSize.y), // Top-center
+        float2(texelSize.x, -texelSize.y), // Top-right
+        float2(-texelSize.x, 0.0), // Middle-left
+        float2(0.0, 0.0), // Center
+        float2(texelSize.x, 0.0), // Middle-right
+        float2(-texelSize.x, texelSize.y), // Bottom-left
+        float2(0.0, texelSize.y), // Bottom-center
+        float2(texelSize.x, texelSize.y) // Bottom-right
+    };
+
+    float4 blurred = float4(0.0, 0.0, 0.0, 0.0);
+    for (int i = 0; i < 9; i++)
+    {
+        blurred += sourceTex.SampleLevel(samplerState, input.uv + offsets[i], 0);
+    }
+    blurred /= 9.0; // Average for blur
+
+    // Apply unsharp mask
+    float4 sharpened = color + sharpenStrength * (color - blurred);
+    
+    // Clamp to valid color range
+    sharpened = saturate(sharpened);
     
     // Debug border (red)
     if (input.uv.x < 0.01 || input.uv.x > 0.99 || input.uv.y < 0.01 || input.uv.y > 0.99)
@@ -79,5 +107,5 @@ float4 PS_main(PS_IN input) : SV_TARGET
         return float4(1.0, 0.0, 0.0, 1.0);
     }
     
-    return color;
+    return sharpened;
 }
