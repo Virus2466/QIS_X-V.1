@@ -1,0 +1,2 @@
+#pragma once
+inline constexpr char kShaderSource[] = R"qis_hlsl(@QIS_SHADER_SOURCE@)qis_hlsl";

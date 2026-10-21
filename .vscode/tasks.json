@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "QIS-X: Configure",
+      "type": "process",
+      "command": "cmake",
+      "args": ["--preset", "windows"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "QIS-X: Build Debug",
+      "type": "process",
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "--parallel"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": "QIS-X: Configure",
+      "problemMatcher": ["$msCompile"],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

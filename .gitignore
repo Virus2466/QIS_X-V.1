@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# QIS-X local CMake configuration
+/build/
+/CMakeUserPresets.json

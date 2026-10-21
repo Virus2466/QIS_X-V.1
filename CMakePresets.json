@@ -1,0 +1,16 @@
+{
+  "version": 6,
+  "configurePresets": [{
+    "name": "windows", "displayName": "Windows / Visual Studio 2022 / x64",
+    "generator": "Visual Studio 17 2022", "architecture": "x64",
+    "binaryDir": "${sourceDir}/out/build/windows"
+  }],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "windows", "configuration": "Release" },
+    { "name": "debug", "configurePreset": "windows", "configuration": "Debug" }
+  ],
+  "testPresets": [{
+    "name": "release", "configurePreset": "windows", "configuration": "Release",
+    "output": { "outputOnFailure": true }
+  }]
+}
